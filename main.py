@@ -93,7 +93,7 @@ plt.show()
 
 
 # Image to duplicate
-data.blackAndWhiteImage('gtsrb-german-traffic-sign/Train/0/00000_00000_00000.png')
+data.blackAndWhiteImage('gtsrb-german-traffic-sign/Train/0/00000_00000_00000.png', data_train, "gtsrb-german-traffic-sign/Train.csv")
 
 image = Image.open('gtsrb-german-traffic-sign/Train/0/00000_00000_00000.png')
 image_nb = Image.open('gtsrb-german-traffic-sign/Train/0/00000_00000_00000_bw.png')
