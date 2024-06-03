@@ -12,6 +12,7 @@ import numpy as np
 
 import data
 import pca
+import path_generator as pg
 
 # https://www.kaggle.com/datasets/meowmeowmeowmeowmeow/gtsrb-german-traffic-sign
 
@@ -113,3 +114,8 @@ plt.axis('off')
 plt.show()
 
 data.resize(["Train/0/00000_00000_00000.png"])
+
+r = pg.PathListGenerator("gtsrb-german-traffic-sign/Train.csv")
+p = pca.PCAReductor(10, r.path_list)
+p.pca_reduction()
+p.reconstruct_image()
