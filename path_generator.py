@@ -22,7 +22,7 @@ class PathListGenerator():
                 self.path_list.append(data[i][-1])
 # pedrovanhylckama
 # 71b9da1af5b7f28a485d5ddba5f6f268
-od.download("https://www.kaggle.com/datasets/meowmeowmeowmeowmeow/gtsrb-german-traffic-sign")
+#od.download("https://www.kaggle.com/datasets/meowmeowmeowmeowmeow/gtsrb-german-traffic-sign")
 r = PathListGenerator("gtsrb-german-traffic-sign/Train.csv")
 p = pca.PCAReductor(10, r.path_list)
 p.pca_reduction()
