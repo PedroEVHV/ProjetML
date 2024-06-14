@@ -3,13 +3,19 @@ from tkinter import filedialog, Text, Scrollbar
 from PIL import Image, ImageOps
 import numpy as np
 import joblib
+from tensorflow.keras.models import load_model, Model
 
-# Définir en plus seuil + Conclusion calculée 
+# Charger le modèle Keras
+cnn_model = load_model('model_CNN.h5')
 
-# Charger les modèles
-model1 = joblib.load('model_test_1.pkl')
-model2 = joblib.load('model_test_2.pkl')
-model3 = joblib.load('model_test_3.pkl')
+# Charger les autres modèles (Remplacez les chemins par ceux de vos modèles)
+model2 = joblib.load('model_Random_Forest.pkl')
+model3 = joblib.load('model_SVM.pkl')
+
+# Créer le modèle intermédiaire pour extraire les caractéristiques
+layer_name = 'dense'  # Assurez-vous que le nom de la couche correspond à votre modèle
+intermediate_layer_model = Model(inputs=cnn_model.input,
+                                 outputs=cnn_model.get_layer(layer_name).output)
 
 image_path = None
 
@@ -20,14 +26,28 @@ def charger_image():
         image_label.config(text=f"Image chargée: {image_path}")
 
 def predict_image(model, image_path):
-    img = Image.open(image_path).convert('L')
-    img = ImageOps.invert(img)
-    img = img.resize((8, 8))
-    img = np.array(img).astype('float32') / 16
-    img = img.reshape(1, -1)
-    prediction = model.predict(img)[0]
-    probabilities = model.predict_proba(img)[0]
+    img = Image.open(image_path).convert('RGB')
+    
+    # Redimensionner l'image pour le modèle CNN
+    img = img.resize((50, 50))
+    img = np.array(img).astype('float32') / 255
+    img_cnn = img.reshape(1, 50, 50, 3)
+    
+    # Extraire les caractéristiques intermédiaires si ce n'est pas un modèle CNN
+    if model != cnn_model:
+        features = intermediate_layer_model.predict(img_cnn)
+        features = features.flatten().reshape(1, -1)  # Flatten les caractéristiques
+        prediction = model.predict(features)[0]
+        if hasattr(model, "predict_proba"):
+            probabilities = model.predict_proba(features)[0]
+        else:
+            probabilities = [0] * 43  # Placeholder if predict_proba is not available
+    else:
+        prediction = np.argmax(model.predict(img_cnn), axis=1)[0]
+        probabilities = model.predict(img_cnn)[0]
+    
     return prediction, probabilities
+
 
 def format_probabilities(model_name, prediction, probabilities, threshold):
     sorted_indices = np.argsort(probabilities)[::-1]
@@ -38,12 +58,12 @@ def lancer():
     threshold = prob_threshold.get()
     if image_path:
         results = []
-        overall_probabilities = np.zeros(10)  # Assuming 10 classes (0-9)
+        overall_probabilities = np.zeros(43)  # Supposons 43 classes (0-42)
         selected_model_count = 0
         has_results_above_threshold = False
 
         if model1_var.get():
-            prediction, probabilities = predict_image(model1, image_path)
+            prediction, probabilities = predict_image(cnn_model, image_path)
             overall_probabilities += probabilities
             selected_model_count += 1
             formatted_result = format_probabilities("Modèle 1", prediction, probabilities, threshold)
@@ -95,22 +115,65 @@ def select_all():
 def update_prob_label(value):
     prob_label.config(text=f"Définir le seuil de probabilité : {value}%")
 
-# Centrer la fenêtre sur l'écran
 def center_window(window):
     window.update_idletasks()
     width = window.winfo_width()
     height = window.winfo_height()
-    screen_width = window.winfo_screenwidth()
-    screen_height = window.winfo_screenheight()
-    vroot_height = window.winfo_vrootheight()
-    x = (screen_width // 2) - (width // 2)
-    y = (screen_height // 2) - (height // 2)
-
-    # Ajuster pour la barre des tâches si elle est en bas
-    if vroot_height > screen_height:
-        y -= (vroot_height - screen_height)
-
+    x = (window.winfo_screenwidth() // 2) - (width // 2)
+    y = (window.winfo_screenheight() // 2) - (height // 2)
     window.geometry(f'{width}x{height}+{x}+{y}')
+
+def show_all_models_info():
+    models_info = [("CNN", "Modèle 1"), ("Random_Forest", "Modèle 2"), ("SVM", "Modèle 3")]  # Liste des modèles avec leur numéro et nom
+
+    # Créer une nouvelle fenêtre pour afficher les informations
+    info_window = tk.Toplevel(root)
+    info_window.title("Informations sur les Modèles")
+    info_window.geometry("600x590")
+    info_window.resizable(False, False) 
+
+    # Créer un cadre pour contenir le widget Text et les barres de défilement
+    info_frame = tk.Frame(info_window)
+    info_frame.pack(padx=10, pady=10, fill='both', expand=True)
+
+    # Ajouter un widget Text pour afficher les informations
+    info_text = Text(info_frame, wrap='none', width=70, height=30)
+    info_text.pack(side='left', fill='both', expand=True)
+
+    # Ajouter une scrollbar verticale pour le Text
+    scroll_y = Scrollbar(info_frame, command=info_text.yview)
+    scroll_y.pack(side='right', fill='y')
+
+    # Ajouter une scrollbar horizontale pour le Text
+    scroll_x = Scrollbar(info_frame, orient='horizontal', command=info_text.xview)
+    scroll_x.pack(side='bottom', fill='x')
+
+    # Configurer les scrollbars pour agir sur le widget Text
+    info_text.config(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
+
+    for model_name, model_num in models_info:
+        try:
+            # Charger le rapport de classification et la matrice de confusion
+            report = joblib.load(f'report_{model_name}.pkl')
+            cm = joblib.load(f'cm_{model_name}.pkl')
+
+            # Afficher le titre du modèle
+            info_text.insert(tk.END, f"=== {model_num} ({model_name}) : ===\n\n")
+
+            # Afficher le rapport de classification
+            info_text.insert(tk.END, f"Classification report for the {model_name} :\n{report}\n\n")
+
+            # Afficher la matrice de confusion
+            info_text.insert(tk.END, f"Confusion Matrix for the {model_name} :\n{cm}\n\n")
+
+        except FileNotFoundError:
+            info_text.insert(tk.END, f"Les données pour {model_num} ({model_name}) n'ont pas été trouvées.\n\n")
+
+    # Rendre le Text en lecture seule
+    info_text.config(state=tk.DISABLED)
+
+    # Centrer la fenêtre d'informations
+    center_window(info_window)
 
 # Créer la fenêtre principale
 root = tk.Tk()
@@ -131,6 +194,10 @@ image_label.pack(pady=5)
 # Choisir le modèle
 model_label = tk.Label(root, text="Choisir votre modèle", font=('Helvetica', 10, 'bold'))
 model_label.pack(pady=10)
+
+# Bouton pour afficher les informations
+info_button = tk.Button(root, text="Information", command=show_all_models_info)
+info_button.pack(pady=10)
 
 model_frame = tk.Frame(root)
 model_frame.pack(pady=10)
@@ -192,6 +259,10 @@ result_text.config(yscrollcommand=scroll_y.set)
 
 # Centrer la fenêtre au démarrage
 root.update_idletasks()
-center_window(root)
+width = root.winfo_width()
+height = root.winfo_height()
+x = (root.winfo_screenwidth() // 2) - (width // 2)
+y = (root.winfo_screenheight() // 2) - (height // 2)
+root.geometry(f'{width}x{height}+{x}+{y}')
 
 root.mainloop()
