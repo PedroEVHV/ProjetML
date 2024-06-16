@@ -48,7 +48,6 @@ def predict_image(model, image_path):
     
     return prediction, probabilities
 
-
 def format_probabilities(model_name, prediction, probabilities, threshold):
     sorted_indices = np.argsort(probabilities)[::-1]
     formatted_probs = ", ".join([f"{i} ({probabilities[i]*100:.1f}%)" for i in sorted_indices if probabilities[i]*100 >= threshold])
@@ -61,43 +60,56 @@ def lancer():
         overall_probabilities = np.zeros(43)  # Supposons 43 classes (0-42)
         selected_model_count = 0
         has_results_above_threshold = False
+        predictions = []
 
         if model1_var.get():
             prediction, probabilities = predict_image(cnn_model, image_path)
-            overall_probabilities += probabilities
-            selected_model_count += 1
-            formatted_result = format_probabilities("Modèle 1", prediction, probabilities, threshold)
             if any(probabilities[i] * 100 >= threshold for i in np.argsort(probabilities)[::-1]):
+                overall_probabilities += probabilities
+                selected_model_count += 1
+                formatted_result = format_probabilities("Modèle 1", prediction, probabilities, threshold)
                 results.append(formatted_result)
+                predictions.append(prediction)
                 has_results_above_threshold = True
+            else:
+                formatted_result = f"Modèle 1 : Aucune classe avec une probabilité supérieure à {threshold}%"
+                results.append(formatted_result)
         if model2_var.get():
             prediction, probabilities = predict_image(model2, image_path)
-            overall_probabilities += probabilities
-            selected_model_count += 1
-            formatted_result = format_probabilities("Modèle 2", prediction, probabilities, threshold)
             if any(probabilities[i] * 100 >= threshold for i in np.argsort(probabilities)[::-1]):
+                overall_probabilities += probabilities
+                selected_model_count += 1
+                formatted_result = format_probabilities("Modèle 2", prediction, probabilities, threshold)
                 results.append(formatted_result)
+                predictions.append(prediction)
                 has_results_above_threshold = True
+            else:
+                formatted_result = f"Modèle 2 : Aucune classe avec une probabilité supérieure à {threshold}%"
+                results.append(formatted_result)
         if model3_var.get():
             prediction, probabilities = predict_image(model3, image_path)
-            overall_probabilities += probabilities
-            selected_model_count += 1
-            formatted_result = format_probabilities("Modèle 3", prediction, probabilities, threshold)
             if any(probabilities[i] * 100 >= threshold for i in np.argsort(probabilities)[::-1]):
+                overall_probabilities += probabilities
+                selected_model_count += 1
+                formatted_result = format_probabilities("Modèle 3", prediction, probabilities, threshold)
                 results.append(formatted_result)
+                predictions.append(prediction)
                 has_results_above_threshold = True
+            else:
+                formatted_result = f"Modèle 3 : Aucune classe avec une probabilité supérieure à {threshold}%"
+                results.append(formatted_result)
 
-        if not results:
-            result_text.insert(tk.END, f"Aucun résultat à une probabilité supérieure au seuil défini ({threshold}%)\n")
-        else:
+        if results:
             for result in results:
                 result_text.insert(tk.END, result + "\n")
 
-            if has_results_above_threshold:
-                average_probabilities = overall_probabilities / selected_model_count
-                most_probable_number = np.argmax(average_probabilities)
-                max_probability = average_probabilities[most_probable_number] * 100
-                conclusion_message = f"Conclusion : Le numéro le plus probable sur les différents modèles est {most_probable_number} avec une probabilité moyenne de {max_probability:.1f}%.\n"
+            if selected_model_count > 0:  # Only calculate average if there are selected models with results above threshold
+                if len(set(predictions)) == 1:
+                    most_probable_number = predictions[0]
+                    max_probability = overall_probabilities[most_probable_number] * 100 / selected_model_count
+                    conclusion_message = f"Conclusion : Le numéro le plus probable sur les différents modèles est {most_probable_number} avec une probabilité moyenne de {max_probability:.1f}%.\n"
+                else:
+                    conclusion_message = "Conclusion : Résultats différents selon les modèles.\n"
                 result_text.insert(tk.END, conclusion_message)
     else:
         result_text.insert(tk.END, "Veuillez charger une image d'abord\n")
@@ -105,6 +117,87 @@ def lancer():
 
 def clear_results():
     result_text.delete('1.0', tk.END)
+
+def show_classes():
+    classes_window = tk.Toplevel(root)
+    classes_window.title("Classes Existantes")
+    classes_window.geometry("350x400")
+    classes_window.grid_columnconfigure(0, weight=1)
+
+    # Créer un cadre pour contenir le widget Text et les barres de défilement
+    main_frame = tk.Frame(classes_window)
+    main_frame.grid(row=0, column=0, sticky='nsew')
+
+    # Ajouter un widget Text pour afficher les informations
+    classes_text = Text(main_frame, wrap='word', width=1, height=25)
+    classes_text.pack(side='left', fill='both', expand=True)
+
+    # Ajouter une scrollbar verticale pour le Text
+    scroll_y_col1 = Scrollbar(main_frame, orient='vertical', command=classes_text.yview)
+    scroll_y_col1.pack(side='right', fill='y')
+    classes_text.config(yscrollcommand=scroll_y_col1.set)
+
+    # Insérer les textes dans les colonnes
+    classes_text.insert(tk.END, """
+    0. Limite de vitesse (20 km/h)
+    1. Limite de vitesse (30 km/h)
+    2. Limite de vitesse (50 km/h)
+    3. Limite de vitesse (60 km/h)
+    4. Limite de vitesse (70 km/h)
+    5. Limite de vitesse (80 km/h)
+    6. Fin de limitation de vitesse
+       (80 km/h)
+    7. Limite de vitesse (100 km/h)
+    8. Limite de vitesse (120 km/h)
+    9. Interdiction de dépasser
+    10. Interdiction de dépasser pour 
+        les véhicules de plus de 3,5 
+        tonnes
+    11. Priorité à la prochaine 
+        intersection
+    12. Route prioritaire
+    13. Cédez le passage
+    14. Arrêt
+    15. Interdiction de circuler
+    16. Interdiction aux véhicules 
+        de plus de 3,5 tonnes
+    17. Sens interdit
+    18. Danger général
+    19. Virage dangereux à gauche
+    20. Virage dangereux à droite
+    21. Double virage
+    22. Chaussée déformée
+    23. Route glissante    
+    24. Rétrécissement de chaussée 
+        par la droite                  
+    25. Travaux
+    26. Feux tricolores
+    27. Passage pour piétons
+    28. Enfants
+    29. Passage pour cyclistes
+    30. Risque de neige ou de verglas
+    31. Passage d'animaux sauvages
+    32. Fin de toutes les interdictions 
+        imposées aux véhicules en 
+        mouvement
+    33. Tourner à droite
+    34. Tourner à gauche
+    35. Tout droit
+    36. Tout droit ou à droite
+    37. Tout droit ou à gauche
+    38. Obligation de tourner à droite
+    39. Obligation de tourner à gauche
+    40. Sens giratoire obligatoire
+    41. Fin d'interdiction de dépasser
+    42. Fin d'interdiction de dépasser 
+        pour les véhicules de plus
+        de 3,5 tonnes              
+    """)
+
+    classes_text.config(state=tk.DISABLED)
+
+    # Centrer la fenêtre d'informations
+    center_window(classes_window)
 
 def select_all():
     all_selected = select_all_var.get()
@@ -143,10 +236,6 @@ def show_all_models_info():
     # Ajouter une scrollbar verticale pour le Text
     scroll_y = Scrollbar(info_frame, command=info_text.yview)
     scroll_y.pack(side='right', fill='y')
-
-    # Ajouter une scrollbar horizontale pour le Text
-    scroll_x = Scrollbar(info_frame, orient='horizontal', command=info_text.xview)
-    scroll_x.pack(side='bottom', fill='x')
 
     # Configurer les scrollbars pour agir sur le widget Text
     info_text.config(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
@@ -239,6 +328,10 @@ separator_label.pack(anchor='center')
 
 clear_button = tk.Button(separator_frame, text="Effacer", command=clear_results)
 clear_button.pack(side='right', padx=15)  # Adjust padding to move the button slightly left
+
+# Bouton pour afficher les classes
+classes_button = tk.Button(separator_frame, text="Afficher les classes", command=show_classes)
+classes_button.pack(side='right', padx=5)
 
 # Résultats avec barre de défilement horizontale
 result_frame = tk.Frame(root)
