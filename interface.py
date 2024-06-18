@@ -8,12 +8,12 @@ from tensorflow.keras.models import load_model, Model
 # Charger le modèle Keras
 cnn_model = load_model('model_CNN.h5')
 
-# Charger les autres modèles (Remplacez les chemins par ceux de vos modèles)
+# Charger les autres modèles 
 model2 = joblib.load('model_Random_Forest.pkl')
 model3 = joblib.load('model_SVM.pkl')
 
 # Créer le modèle intermédiaire pour extraire les caractéristiques
-layer_name = 'dense'  # Assurez-vous que le nom de la couche correspond à votre modèle
+layer_name = 'dense_2'  # S'assurer que le nom de la couche soit bon
 intermediate_layer_model = Model(inputs=cnn_model.input,
                                  outputs=cnn_model.get_layer(layer_name).output)
 
@@ -36,12 +36,12 @@ def predict_image(model, image_path):
     # Extraire les caractéristiques intermédiaires si ce n'est pas un modèle CNN
     if model != cnn_model:
         features = intermediate_layer_model.predict(img_cnn)
-        features = features.flatten().reshape(1, -1)  # Flatten les caractéristiques
+        features = features.flatten().reshape(1, -1)  # "Aplatir" les caractéristiques
         prediction = model.predict(features)[0]
         if hasattr(model, "predict_proba"):
             probabilities = model.predict_proba(features)[0]
         else:
-            probabilities = [0] * 43  # Placeholder if predict_proba is not available
+            probabilities = [0] * 43  # Si la probabilité n'est pas disponible
     else:
         prediction = np.argmax(model.predict(img_cnn), axis=1)[0]
         probabilities = model.predict(img_cnn)[0]
@@ -57,7 +57,7 @@ def lancer():
     threshold = prob_threshold.get()
     if image_path:
         results = []
-        overall_probabilities = np.zeros(43)  # Supposons 43 classes (0-42)
+        overall_probabilities = np.zeros(43)  # 43 classes (0-42)
         selected_model_count = 0
         has_results_above_threshold = False
         predictions = []
@@ -103,7 +103,7 @@ def lancer():
             for result in results:
                 result_text.insert(tk.END, result + "\n")
 
-            if selected_model_count > 0:  # Only calculate average if there are selected models with results above threshold
+            if selected_model_count > 0:  # Calcul faisant parti du résultat, de la moyenne seulement si le résultat du modèle sélectionné est au dessus du seuil choisi
                 if len(set(predictions)) == 1:
                     most_probable_number = predictions[0]
                     max_probability = overall_probabilities[most_probable_number] * 100 / selected_model_count
@@ -113,7 +113,7 @@ def lancer():
                 result_text.insert(tk.END, conclusion_message)
     else:
         result_text.insert(tk.END, "Veuillez charger une image d'abord\n")
-    result_text.insert(tk.END, "-" * 40 + "\n")  # Ajouter une ligne séparatrice après le lancement
+    result_text.insert(tk.END, "-" * 40 + "\n")  
 
 def clear_results():
     result_text.delete('1.0', tk.END)
@@ -128,11 +128,11 @@ def show_classes():
     main_frame = tk.Frame(classes_window)
     main_frame.grid(row=0, column=0, sticky='nsew')
 
-    # Ajouter un widget Text pour afficher les informations
+    # Ajouter un widget Text pour afficher les informations des classes
     classes_text = Text(main_frame, wrap='word', width=1, height=25)
     classes_text.pack(side='left', fill='both', expand=True)
 
-    # Ajouter une scrollbar verticale pour le Text
+    # Ajouter un scrollbar vertical pour le Text
     scroll_y_col1 = Scrollbar(main_frame, orient='vertical', command=classes_text.yview)
     scroll_y_col1.pack(side='right', fill='y')
     classes_text.config(yscrollcommand=scroll_y_col1.set)
@@ -233,7 +233,7 @@ def show_all_models_info():
     info_text = Text(info_frame, wrap='none', width=70, height=30)
     info_text.pack(side='left', fill='both', expand=True)
 
-    # Ajouter une scrollbar verticale pour le Text
+    # Ajouter un scrollbar vertical pour le Text
     scroll_y = Scrollbar(info_frame, command=info_text.yview)
     scroll_y.pack(side='right', fill='y')
 
@@ -268,7 +268,7 @@ def show_all_models_info():
 root = tk.Tk()
 root.title("Interface de Reconnaissance d'Image")
 root.geometry("600x590")
-root.resizable(False, False)  # Désactiver le redimensionnement
+root.resizable(False, False)  
 
 # Charger une image
 charger_label = tk.Label(root, text="Charger votre image", font=('Helvetica', 10, 'bold'))
@@ -327,7 +327,7 @@ separator_label = tk.Label(separator_frame, text="Résultats", font=('Helvetica'
 separator_label.pack(anchor='center')
 
 clear_button = tk.Button(separator_frame, text="Effacer", command=clear_results)
-clear_button.pack(side='right', padx=15)  # Adjust padding to move the button slightly left
+clear_button.pack(side='right', padx=15)  
 
 # Bouton pour afficher les classes
 classes_button = tk.Button(separator_frame, text="Afficher les classes", command=show_classes)
