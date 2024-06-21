@@ -206,7 +206,7 @@ def select_all():
     model3_var.set(all_selected)
 
 def update_prob_label(value):
-    prob_label.config(text=f"Définir le seuil de probabilité : {value}%")
+    prob_label.config(text=f"Définir le seuil de probabilité minimal : {value}%")
 
 def center_window(window):
     window.update_idletasks()
