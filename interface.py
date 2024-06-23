@@ -13,7 +13,7 @@ model2 = joblib.load('model_Random_Forest.pkl')
 model3 = joblib.load('model_SVM.pkl')
 
 # Créer le modèle intermédiaire pour extraire les caractéristiques
-layer_name = 'dense_2'  # S'assurer que le nom de la couche soit bon
+layer_name = 'dense'  # S'assurer que le nom de la couche soit bon
 intermediate_layer_model = Model(inputs=cnn_model.input,
                                  outputs=cnn_model.get_layer(layer_name).output)
 
