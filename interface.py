@@ -4,6 +4,7 @@ from PIL import Image, ImageOps
 import numpy as np
 import joblib
 from tensorflow.keras.models import load_model, Model
+import os
 
 # Charger le modèle Keras
 cnn_model = load_model('model_CNN.h5')
@@ -18,12 +19,15 @@ intermediate_layer_model = Model(inputs=cnn_model.input,
                                  outputs=cnn_model.get_layer(layer_name).output)
 
 image_path = None
+image_loaded = False
 
 def charger_image():
-    global image_path
-    image_path = filedialog.askopenfilename()
-    if image_path:
+    global image_path, image_loaded
+    new_image_path = filedialog.askopenfilename()
+    if new_image_path:
+        image_path = new_image_path
         image_label.config(text=f"Image chargée: {image_path}")
+        image_loaded = True
 
 def predict_image(model, image_path):
     img = Image.open(image_path).convert('RGB')
@@ -50,67 +54,73 @@ def predict_image(model, image_path):
 
 def format_probabilities(model_name, prediction, probabilities, threshold):
     sorted_indices = np.argsort(probabilities)[::-1]
-    formatted_probs = ", ".join([f"{i} ({probabilities[i]*100:.1f}%)" for i in sorted_indices if probabilities[i]*100 >= threshold])
+    formatted_probs = ", ".join([f"{i} ({probabilities[i]*100:.2f}%)" for i in sorted_indices if probabilities[i]*100 >= threshold])
     return f"{model_name} : Résultat {prediction} - Détails : {formatted_probs}"
 
 def lancer():
+    global image_loaded
     threshold = prob_threshold.get()
-    if image_path:
-        results = []
-        overall_probabilities = np.zeros(43)  # 43 classes (0-42)
-        selected_model_count = 0
-        has_results_above_threshold = False
-        predictions = []
+    if image_path and image_loaded :
+        if model1_var.get() or model2_var.get() or model3_var.get():
+            image_name = os.path.basename(image_path)  # Récupérer uniquement le nom du fichier
+            result_text.insert(tk.END, f"Résultats pour l'image : {image_name}\n")  # Ajouter le nom de l'image
+            results = []
+            overall_probabilities = np.zeros(43)  # 43 classes (0-42)
+            selected_model_count = 0
+            has_results_above_threshold = False
+            predictions = []
 
-        if model1_var.get():
-            prediction, probabilities = predict_image(cnn_model, image_path)
-            if any(probabilities[i] * 100 >= threshold for i in np.argsort(probabilities)[::-1]):
-                overall_probabilities += probabilities
-                selected_model_count += 1
-                formatted_result = format_probabilities("Modèle 1", prediction, probabilities, threshold)
-                results.append(formatted_result)
-                predictions.append(prediction)
-                has_results_above_threshold = True
-            else:
-                formatted_result = f"Modèle 1 : Aucune classe avec une probabilité supérieure à {threshold}%"
-                results.append(formatted_result)
-        if model2_var.get():
-            prediction, probabilities = predict_image(model2, image_path)
-            if any(probabilities[i] * 100 >= threshold for i in np.argsort(probabilities)[::-1]):
-                overall_probabilities += probabilities
-                selected_model_count += 1
-                formatted_result = format_probabilities("Modèle 2", prediction, probabilities, threshold)
-                results.append(formatted_result)
-                predictions.append(prediction)
-                has_results_above_threshold = True
-            else:
-                formatted_result = f"Modèle 2 : Aucune classe avec une probabilité supérieure à {threshold}%"
-                results.append(formatted_result)
-        if model3_var.get():
-            prediction, probabilities = predict_image(model3, image_path)
-            if any(probabilities[i] * 100 >= threshold for i in np.argsort(probabilities)[::-1]):
-                overall_probabilities += probabilities
-                selected_model_count += 1
-                formatted_result = format_probabilities("Modèle 3", prediction, probabilities, threshold)
-                results.append(formatted_result)
-                predictions.append(prediction)
-                has_results_above_threshold = True
-            else:
-                formatted_result = f"Modèle 3 : Aucune classe avec une probabilité supérieure à {threshold}%"
-                results.append(formatted_result)
-
-        if results:
-            for result in results:
-                result_text.insert(tk.END, result + "\n")
-
-            if selected_model_count > 0:  # Calcul faisant parti du résultat, de la moyenne seulement si le résultat du modèle sélectionné est au dessus du seuil choisi
-                if len(set(predictions)) == 1:
-                    most_probable_number = predictions[0]
-                    max_probability = overall_probabilities[most_probable_number] * 100 / selected_model_count
-                    conclusion_message = f"Conclusion : Le numéro le plus probable sur les différents modèles est {most_probable_number} avec une probabilité moyenne de {max_probability:.1f}%.\n"
+            if model1_var.get():
+                prediction, probabilities = predict_image(cnn_model, image_path)
+                if any(probabilities[i] * 100 >= threshold for i in np.argsort(probabilities)[::-1]):
+                    overall_probabilities += probabilities
+                    selected_model_count += 1
+                    formatted_result = format_probabilities("Modèle 1", prediction, probabilities, threshold)
+                    results.append(formatted_result)
+                    predictions.append(prediction)
+                    has_results_above_threshold = True
                 else:
-                    conclusion_message = "Conclusion : Résultats différents selon les modèles.\n"
-                result_text.insert(tk.END, conclusion_message)
+                    formatted_result = f"Modèle 1 : Aucune classe avec une probabilité supérieure à {threshold}%"
+                    results.append(formatted_result)
+            if model2_var.get():
+                prediction, probabilities = predict_image(model2, image_path)
+                if any(probabilities[i] * 100 >= threshold for i in np.argsort(probabilities)[::-1]):
+                    overall_probabilities += probabilities
+                    selected_model_count += 1
+                    formatted_result = format_probabilities("Modèle 2", prediction, probabilities, threshold)
+                    results.append(formatted_result)
+                    predictions.append(prediction)
+                    has_results_above_threshold = True
+                else:
+                    formatted_result = f"Modèle 2 : Aucune classe avec une probabilité supérieure à {threshold}%"
+                    results.append(formatted_result)
+            if model3_var.get():
+                prediction, probabilities = predict_image(model3, image_path)
+                if any(probabilities[i] * 100 >= threshold for i in np.argsort(probabilities)[::-1]):
+                    overall_probabilities += probabilities
+                    selected_model_count += 1
+                    formatted_result = format_probabilities("Modèle 3", prediction, probabilities, threshold)
+                    results.append(formatted_result)
+                    predictions.append(prediction)
+                    has_results_above_threshold = True
+                else:
+                    formatted_result = f"Modèle 3 : Aucune classe avec une probabilité supérieure à {threshold}%"
+                    results.append(formatted_result)
+
+            if results:
+                for result in results:
+                    result_text.insert(tk.END, result + "\n")
+
+                if selected_model_count > 0:  # Calcul faisant parti du résultat, de la moyenne seulement si le résultat du modèle sélectionné est au dessus du seuil choisi
+                    if len(set(predictions)) == 1:
+                        most_probable_number = predictions[0]
+                        max_probability = overall_probabilities[most_probable_number] * 100 / selected_model_count
+                        conclusion_message = f"Conclusion : Le numéro le plus probable sur les différents modèles est {most_probable_number} avec une probabilité moyenne de {max_probability:.2f}%.\n"
+                    else:
+                        conclusion_message = "Conclusion : Résultats différents selon les modèles.\n"
+                    result_text.insert(tk.END, conclusion_message)
+        else:
+            result_text.insert(tk.END, "Veuillez sélectionner un modèle d'abord\n")
     else:
         result_text.insert(tk.END, "Veuillez charger une image d'abord\n")
     result_text.insert(tk.END, "-" * 40 + "\n")  
